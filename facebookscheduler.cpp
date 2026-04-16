@@ -15,7 +15,6 @@ size_t FacebookScheduler::WriteCallback(void* contents, size_t size, size_t nmem
     return size * nmemb;
 }
 
-// --- NEW: API Logic to fetch Page Names and dynamic Page Tokens ---
 std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string& token) {
     std::vector<FacebookPage> pages;
     CURL* curl = curl_easy_init();
@@ -31,8 +30,7 @@ std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
 
     CURLcode res = curl_easy_perform(curl);
-
-    // Attempt 1: Assume it's a User Token and parse multiple pages
+    
     if (res == CURLE_OK) {
         try {
             json res_json = json::parse(response_string);
@@ -48,7 +46,6 @@ std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string
         } catch (...) {}
     }
 
-    // Attempt 2: If list is empty, assume they pasted a direct Page Token and fetch its single name
     if (pages.empty()) {
         response_string.clear();
         url = "https://graph.facebook.com/v20.0/me?access_token=" + token;
@@ -61,7 +58,7 @@ std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string
                     FacebookPage page;
                     page.name = res_json.value("name", "");
                     page.id = res_json.value("id", "");
-                    page.token = token;
+                    page.token = token; 
                     pages.push_back(page);
                 }
             } catch (...) {}
@@ -71,7 +68,6 @@ std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string
     curl_easy_cleanup(curl);
     return pages;
 }
-// -----------------------------------------------------------------
 
 ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const std::string& description, time_t publishTime) {
     CURL* curl = curl_easy_init();
@@ -80,15 +76,15 @@ ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const
     std::string response_string;
     curl_easy_setopt(curl, CURLOPT_CAINFO, CERT_PATH.c_str());
 
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3600L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 60L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3600L); 
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 60L); 
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 120L);
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 60L);
     curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
 
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Expect:");
+    headers = curl_slist_append(headers, "Expect:"); 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     std::string url = "https://graph-video.facebook.com/v19.0/" + m_pageId + "/videos";
@@ -123,7 +119,7 @@ ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const
 
     CURLcode res = curl_easy_perform(curl);
     long http_code = 0;
-
+    
     if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     } else {
@@ -133,7 +129,7 @@ ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const
     curl_slist_free_all(headers);
     curl_mime_free(mime);
     curl_easy_cleanup(curl);
-
+    
     return {res == CURLE_OK && http_code == 200, response_string};
 }
 
@@ -147,7 +143,7 @@ ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const
     curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
 
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Expect:");
+    headers = curl_slist_append(headers, "Expect:"); 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     std::string upload_url = "https://graph.facebook.com/v20.0/" + m_pageId + "/photos";
@@ -206,7 +202,7 @@ ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     std::string feed_url = "https://graph.facebook.com/v20.0/" + m_pageId + "/feed";
-
+    
     mime = curl_mime_init(curl);
 
     part = curl_mime_addpart(mime);
@@ -237,7 +233,7 @@ ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const
 
     res = curl_easy_perform(curl);
     long http_code = 0;
-
+    
     if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     } else {

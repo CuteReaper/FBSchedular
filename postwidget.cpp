@@ -46,14 +46,13 @@ void PostWidget::setScheduleTime(const QDateTime& time) {
 void PostWidget::on_browseButton_clicked() {
     QString filter = ui->photoRadioButton->isChecked() ? "Images (*.jpg *.png)" : "Videos (*.mp4 *.mov)";
     QString path = QFileDialog::getOpenFileName(this, "Select File", QDir::homePath(), filter);
-
+    
     if (!path.isEmpty()) {
         QFileInfo info(path);
         QString dirPath = info.absolutePath();
         QString baseName = info.completeBaseName();
         QString suffix = info.suffix();
 
-        // 1. Check if the folder has bad characters (we cannot safely rename user folders)
         for (QChar c : dirPath) {
             if (c.unicode() > 127) {
                 QMessageBox::warning(this, "Invalid Folder", "The folder path contains special characters. Please move the file to a standard folder and try again.");
@@ -61,39 +60,37 @@ void PostWidget::on_browseButton_clicked() {
             }
         }
 
-        // 2. Automatically remove bad characters from the file name
         QString cleanBase = "";
         bool needsRename = false;
         for (QChar c : baseName) {
             if (c.unicode() <= 127) {
                 cleanBase += c;
             } else {
-                needsRename = true; // Drop the character
+                needsRename = true; 
             }
         }
 
         QString finalPath = path;
-
-        // 3. Rename the actual file on the hard drive
+        
         if (needsRename) {
             if (cleanBase.trimmed().isEmpty()) cleanBase = "auto_renamed_media";
             QString newPath = dirPath + "/" + cleanBase + "." + suffix;
-
+            
             if (QFile::rename(path, newPath)) {
-                finalPath = newPath; // Successfully stripped characters!
+                finalPath = newPath; 
             } else {
                 QMessageBox::warning(this, "Rename Failed", "Could not automatically remove the character. The file might be open in another program.");
                 return;
             }
         }
-
-        setFilePath(finalPath);
+        
+        setFilePath(finalPath); 
     }
 }
 
-void PostWidget::setFilePath(const QString& path) {
+void PostWidget::setFilePath(const QString& path, int delayMs) {
     QString lowerPath = path.toLower();
-
+    
     if (lowerPath.endsWith(".mp4") || lowerPath.endsWith(".mov")) {
         ui->videoRadioButton->setChecked(true);
     } else {
@@ -101,13 +98,18 @@ void PostWidget::setFilePath(const QString& path) {
     }
 
     ui->filePathLineEdit->setText(path);
-
+    
     QFileInfo fileInfo(path);
     ui->descriptionTextEdit->setText(fileInfo.completeBaseName());
-
+    
     if (ui->videoRadioButton->isChecked()) {
         m_mediaPlayer->setSource(QUrl::fromLocalFile(path));
-        m_mediaPlayer->play();
+        
+        if (delayMs > 0) {
+            QTimer::singleShot(delayMs, m_mediaPlayer, &QMediaPlayer::play);
+        } else {
+            m_mediaPlayer->play();
+        }
     } else {
         QPixmap pixmap(path);
         ui->previewLabel->setPixmap(pixmap.scaled(150, 150, Qt::KeepAspectRatio));
@@ -118,7 +120,7 @@ void PostWidget::processFrame(const QVideoFrame &frame) {
     if (frame.isValid()) {
         ui->previewLabel->setPixmap(QPixmap::fromImage(frame.toImage()).scaled(150, 150, Qt::KeepAspectRatio));
         m_mediaPlayer->stop();
-        m_mediaPlayer->setSource(QUrl());
+        m_mediaPlayer->setSource(QUrl()); 
     }
 }
 

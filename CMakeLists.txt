@@ -18,7 +18,7 @@ link_directories("${LOCAL_CURL_DIR}/lib")
 
 qt_add_executable(Fbschedular
     MANUAL_FINALIZATION
-
+    
     main.cpp
     mainwindow.cpp
     postwidget.cpp

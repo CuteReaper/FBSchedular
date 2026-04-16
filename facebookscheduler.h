@@ -10,7 +10,6 @@ struct ApiResponse {
     std::string message;
 };
 
-// NEW: Struct to hold the Page Name, ID, and its specific Token
 struct FacebookPage {
     std::string name;
     std::string id;
@@ -20,11 +19,10 @@ struct FacebookPage {
 class FacebookScheduler {
 public:
     FacebookScheduler(const std::string& pageId, const std::string& accessToken);
-
+    
     ApiResponse scheduleVideo(const std::string& videoPath, const std::string& description, time_t publishTime);
     ApiResponse schedulePhoto(const std::string& photoPath, const std::string& caption, time_t publishTime);
 
-    // NEW: Function to query Facebook and get the names of your pages
     static std::vector<FacebookPage> fetchManagedPages(const std::string& token);
 
 private:

@@ -1,5 +1,0 @@
-C:/Users/himak/OneDrive/Documents/Fbschedular/build/Desktop_Qt_6_11_0_MinGW_64_bit-Minimum-Size-Release/CMakeFiles/Fbschedular.dir
-C:/Users/himak/OneDrive/Documents/Fbschedular/build/Desktop_Qt_6_11_0_MinGW_64_bit-Minimum-Size-Release/CMakeFiles/edit_cache.dir
-C:/Users/himak/OneDrive/Documents/Fbschedular/build/Desktop_Qt_6_11_0_MinGW_64_bit-Minimum-Size-Release/CMakeFiles/rebuild_cache.dir
-C:/Users/himak/OneDrive/Documents/Fbschedular/build/Desktop_Qt_6_11_0_MinGW_64_bit-Minimum-Size-Release/CMakeFiles/Fbschedular_autogen_timestamp_deps.dir
-C:/Users/himak/OneDrive/Documents/Fbschedular/build/Desktop_Qt_6_11_0_MinGW_64_bit-Minimum-Size-Release/CMakeFiles/Fbschedular_autogen.dir

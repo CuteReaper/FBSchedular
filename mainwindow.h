@@ -26,7 +26,7 @@ signals:
 
 private slots:
     void on_addPostButton_clicked();
-    void on_bulkAddButton_clicked();
+    void on_bulkAddButton_clicked(); 
     void on_scheduleAllButton_clicked();
     void on_saveSettingsButton_clicked();
     void on_removePostWidget(PostWidget* widget);
@@ -34,19 +34,18 @@ private slots:
     void on_allJobsFinished();
     void on_strategyComboBox_currentIndexChanged(int index);
     void on_startDateTimeEdit_dateTimeChanged(const QDateTime &dateTime);
-
-    // Page Fetching & Manual Entry
+    
     void on_fetchPagesButton_clicked();
     void on_pageComboBox_currentIndexChanged(int index);
-    void on_pageIdLineEdit_textChanged(const QString &arg1);     // NEW
-    void on_accessTokenLineEdit_textChanged(const QString &arg1); // NEW
+    void on_pageIdLineEdit_textChanged(const QString &arg1);
+    void on_accessTokenLineEdit_textChanged(const QString &arg1);
 
 private:
     void loadSettings();
     void saveSettings();
     void initializeScheduler();
     void runBulkSchedule(const QList<PostJob>& jobs);
-    void updateAllPostTimes();
+    void updateAllPostTimes(); 
 
     Ui::MainWindow *ui;
     FacebookScheduler* m_scheduler;

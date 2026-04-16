@@ -1,3 +1,0 @@
-C:\Qt\Tools\CMake_64\bin\cmake.exe -E rm -f CMakeFiles\Fbschedular.dir/objects.a
-C:\Qt\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\Fbschedular.dir/objects.a @CMakeFiles\Fbschedular.dir\objects1.rsp
-C:\Qt\Tools\mingw1310_64\bin\g++.exe -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles\Fbschedular.dir/objects.a -Wl,--no-whole-archive -o Fbschedular.exe -Wl,--out-implib,libFbschedular.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\Fbschedular.dir\linkLibs.rsp

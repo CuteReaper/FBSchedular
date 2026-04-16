@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QMediaPlayer>
 #include <QVideoSink>
+#include <QTimer>
 #include "postjob.h"
 
 QT_BEGIN_NAMESPACE
@@ -20,7 +21,7 @@ public:
     PostJob getPostJob() const;
     void setFileData(const QString& filePath, const QString& fileNameOnly);
     void setScheduleTime(const QDateTime& time);
-    void setFilePath(const QString& path);
+    void setFilePath(const QString& path, int delayMs = 0); 
 
 signals:
     void removeClicked(PostWidget* widget);
