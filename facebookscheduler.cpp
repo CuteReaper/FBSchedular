@@ -2,10 +2,19 @@
 #include <curl/curl.h>
 #include "json.hpp"
 #include <iostream>
+#include <QCoreApplication>
+#include <QDir>
 
 using json = nlohmann::json;
 
-const std::string CERT_PATH = "C:/Users/himak/OneDrive/Documents/Fbschedular/3rdparty/curl-8.16.0_3-win64-mingw/bin/curl-ca-bundle.crt";
+/**
+ * Dynamically resolves the path to the SSL certificate relative to the executable.
+ * This prevents "No Internet/SSL" errors when moving the app between folders.
+ */
+std::string getCertPath() {
+    QString path = QCoreApplication::applicationDirPath() + "/curl-ca-bundle.crt";
+    return QDir::toNativeSeparators(path).toStdString();
+}
 
 FacebookScheduler::FacebookScheduler(const std::string& pageId, const std::string& accessToken)
     : m_pageId(pageId), m_accessToken(accessToken) {}
@@ -22,15 +31,17 @@ std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string
 
     std::string response_string;
     std::string url = "https://graph.facebook.com/v20.0/me/accounts?access_token=" + token;
+    std::string certPath = getCertPath();
 
-    curl_easy_setopt(curl, CURLOPT_CAINFO, CERT_PATH.c_str());
+    // Setup SSL and URL
+    curl_easy_setopt(curl, CURLOPT_CAINFO, certPath.c_str());
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
 
     CURLcode res = curl_easy_perform(curl);
-    
+
     if (res == CURLE_OK) {
         try {
             json res_json = json::parse(response_string);
@@ -46,6 +57,7 @@ std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string
         } catch (...) {}
     }
 
+    // Fallback: If no pages found, try to fetch the user profile itself
     if (pages.empty()) {
         response_string.clear();
         url = "https://graph.facebook.com/v20.0/me?access_token=" + token;
@@ -58,7 +70,7 @@ std::vector<FacebookPage> FacebookScheduler::fetchManagedPages(const std::string
                     FacebookPage page;
                     page.name = res_json.value("name", "");
                     page.id = res_json.value("id", "");
-                    page.token = token; 
+                    page.token = token;
                     pages.push_back(page);
                 }
             } catch (...) {}
@@ -74,17 +86,16 @@ ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const
     if (!curl) return {false, "Curl init failed"};
 
     std::string response_string;
-    curl_easy_setopt(curl, CURLOPT_CAINFO, CERT_PATH.c_str());
+    std::string certPath = getCertPath();
 
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3600L); 
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 60L); 
+    curl_easy_setopt(curl, CURLOPT_CAINFO, certPath.c_str());
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3600L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 60L);
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 120L);
-    curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 60L);
     curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
 
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Expect:"); 
+    headers = curl_slist_append(headers, "Expect:");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     std::string url = "https://graph-video.facebook.com/v19.0/" + m_pageId + "/videos";
@@ -92,18 +103,22 @@ ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const
     curl_mime* mime = curl_mime_init(curl);
     curl_mimepart* part;
 
+    // Token
     part = curl_mime_addpart(mime);
     curl_mime_name(part, "access_token");
     curl_mime_data(part, m_accessToken.c_str(), CURL_ZERO_TERMINATED);
 
+    // Description
     part = curl_mime_addpart(mime);
     curl_mime_name(part, "description");
     curl_mime_data(part, description.c_str(), CURL_ZERO_TERMINATED);
 
+    // Video Source
     part = curl_mime_addpart(mime);
     curl_mime_name(part, "source");
     curl_mime_filedata(part, videoPath.c_str());
 
+    // Scheduling params
     part = curl_mime_addpart(mime);
     curl_mime_name(part, "published");
     curl_mime_data(part, "false", CURL_ZERO_TERMINATED);
@@ -119,7 +134,7 @@ ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const
 
     CURLcode res = curl_easy_perform(curl);
     long http_code = 0;
-    
+
     if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     } else {
@@ -129,8 +144,8 @@ ApiResponse FacebookScheduler::scheduleVideo(const std::string& videoPath, const
     curl_slist_free_all(headers);
     curl_mime_free(mime);
     curl_easy_cleanup(curl);
-    
-    return {res == CURLE_OK && http_code == 200, response_string};
+
+    return {res == CURLE_OK && (http_code == 200 || http_code == 201), response_string};
 }
 
 ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const std::string& caption, time_t publishTime) {
@@ -138,14 +153,16 @@ ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const
     if (!curl) return {false, "Curl init failed"};
 
     std::string response_string;
-    curl_easy_setopt(curl, CURLOPT_CAINFO, CERT_PATH.c_str());
+    std::string certPath = getCertPath();
+
+    curl_easy_setopt(curl, CURLOPT_CAINFO, certPath.c_str());
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 60L);
-    curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
 
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Expect:"); 
+    headers = curl_slist_append(headers, "Expect:");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
+    // Step 1: Upload the Photo (unpublished)
     std::string upload_url = "https://graph.facebook.com/v20.0/" + m_pageId + "/photos";
     curl_mime* mime = curl_mime_init(curl);
     curl_mimepart* part;
@@ -168,28 +185,24 @@ ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
 
     CURLcode res = curl_easy_perform(curl);
+
+    std::string photo_id;
+    if (res == CURLE_OK) {
+        try {
+            json res_json = json::parse(response_string);
+            photo_id = res_json.value("id", "");
+        } catch (...) {}
+    }
+
     curl_mime_free(mime);
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK) {
-        curl_slist_free_all(headers);
-        return {false, "Step 1 (Upload) failed: " + std::string(curl_easy_strerror(res))};
-    }
-
-    std::string photo_id;
-    try {
-        json res_json = json::parse(response_string);
-        photo_id = res_json.value("id", "");
-    } catch (const json::parse_error& e) {
-        curl_slist_free_all(headers);
-        return {false, "Failed to parse JSON from Facebook: " + response_string};
-    }
-
     if (photo_id.empty()) {
         curl_slist_free_all(headers);
-        return {false, "Photo upload succeeded but no ID was returned: " + response_string};
+        return {false, "Photo upload failed: " + response_string};
     }
 
+    // Step 2: Schedule the post with the attached photo ID
     response_string.clear();
     curl = curl_easy_init();
     if (!curl) {
@@ -197,12 +210,10 @@ ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const
         return {false, "Curl init failed for Step 2"};
     }
 
-    curl_easy_setopt(curl, CURLOPT_CAINFO, CERT_PATH.c_str());
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 60L);
+    curl_easy_setopt(curl, CURLOPT_CAINFO, certPath.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, ("https://graph.facebook.com/v20.0/" + m_pageId + "/feed").c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    std::string feed_url = "https://graph.facebook.com/v20.0/" + m_pageId + "/feed";
-    
     mime = curl_mime_init(curl);
 
     part = curl_mime_addpart(mime);
@@ -226,23 +237,17 @@ ApiResponse FacebookScheduler::schedulePhoto(const std::string& photoPath, const
     curl_mime_name(part, "attached_media");
     curl_mime_data(part, attached_media_json.c_str(), CURL_ZERO_TERMINATED);
 
-    curl_easy_setopt(curl, CURLOPT_URL, feed_url.c_str());
     curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
 
     res = curl_easy_perform(curl);
     long http_code = 0;
-    
-    if (res == CURLE_OK) {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    } else {
-        response_string = "Step 2 (Schedule) failed: " + std::string(curl_easy_strerror(res));
-    }
+    if (res == CURLE_OK) curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 
     curl_mime_free(mime);
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
 
-    return {res == CURLE_OK && http_code == 200, response_string};
+    return {res == CURLE_OK && (http_code == 200 || http_code == 201), response_string};
 }

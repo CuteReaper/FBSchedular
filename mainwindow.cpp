@@ -8,7 +8,7 @@
 #include <QFileDialog>
 #include <QDateTime>
 #include <QThread>
-#include <utility> 
+#include <utility>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -43,7 +43,7 @@ void MainWindow::on_fetchPagesButton_clicked()
     }
 
     statusBar()->showMessage("Fetching pages from Facebook...");
-    QApplication::processEvents(); 
+    QApplication::processEvents();
 
     std::vector<FacebookPage> pages = FacebookScheduler::fetchManagedPages(token.toStdString());
 
@@ -57,24 +57,24 @@ void MainWindow::on_fetchPagesButton_clicked()
         QStringList dataList;
         dataList << QString::fromStdString(page.id) << QString::fromStdString(page.token);
         QString pageName = QString::fromStdString(page.name);
-        
+
         bool exists = false;
         for (int i = 0; i < ui->pageComboBox->count(); ++i) {
             QStringList existingData = ui->pageComboBox->itemData(i).toStringList();
             if (existingData.size() == 2 && existingData[0] == QString::fromStdString(page.id)) {
                 exists = true;
                 ui->pageComboBox->setItemText(i, pageName);
-                ui->pageComboBox->setItemData(i, dataList); 
+                ui->pageComboBox->setItemData(i, dataList);
                 break;
             }
         }
-        
+
         if (!exists) {
             ui->pageComboBox->addItem(pageName, dataList);
         }
     }
 
-    saveSettings(); 
+    saveSettings();
     statusBar()->showMessage("Pages loaded and saved successfully.");
 }
 
@@ -84,15 +84,15 @@ void MainWindow::on_pageComboBox_currentIndexChanged(int index) {
         if (dataList.size() == 2) {
             ui->pageIdLineEdit->blockSignals(true);
             ui->accessTokenLineEdit->blockSignals(true);
-            
+
             ui->pageIdLineEdit->setText(dataList[0]);
             ui->accessTokenLineEdit->setText(dataList[1]);
-            
+
             ui->pageIdLineEdit->blockSignals(false);
             ui->accessTokenLineEdit->blockSignals(false);
         }
     }
-    initializeScheduler(); 
+    initializeScheduler();
 }
 
 void MainWindow::on_pageIdLineEdit_textChanged(const QString &arg1) {
@@ -108,21 +108,21 @@ void MainWindow::on_accessTokenLineEdit_textChanged(const QString &arg1) {
 void MainWindow::updateAllPostTimes()
 {
     int strategyIndex = ui->strategyComboBox->currentIndex();
-    if (strategyIndex == 0) return; 
+    if (strategyIndex == 0) return;
 
     QDateTime currentScheduleTime = ui->startDateTimeEdit->dateTime();
-    
+
     for (int i = 0; i < ui->postsLayout->count(); ++i) {
         if (auto* widget = ui->postsLayout->itemAt(i)->widget()) {
             if (auto* postWidget = qobject_cast<PostWidget*>(widget)) {
-                
+
                 postWidget->setScheduleTime(currentScheduleTime);
-                
-                if (strategyIndex == 1) { 
+
+                if (strategyIndex == 1) {
                     currentScheduleTime = currentScheduleTime.addSecs(3600);
-                } else if (strategyIndex == 2) { 
+                } else if (strategyIndex == 2) {
                     currentScheduleTime = currentScheduleTime.addDays(1);
-                } else if (strategyIndex == 3) { 
+                } else if (strategyIndex == 3) {
                     currentScheduleTime = currentScheduleTime.addSecs(12 * 3600);
                 }
             }
@@ -133,19 +133,23 @@ void MainWindow::updateAllPostTimes()
 void MainWindow::on_addPostButton_clicked()
 {
     PostWidget* newPost = new PostWidget(this);
+
+    // Explicitly set the widget to use the provided Start Time
+    newPost->setScheduleTime(ui->startDateTimeEdit->dateTime());
+
     ui->postsLayout->addWidget(newPost);
     connect(newPost, &PostWidget::removeClicked, this, &MainWindow::on_removePostWidget);
-    updateAllPostTimes(); 
+    updateAllPostTimes();
 }
 
 void MainWindow::on_bulkAddButton_clicked()
 {
     QStringList files = QFileDialog::getOpenFileNames(
-        this, 
-        "Select Multiple Media Files", 
-        QDir::homePath(), 
+        this,
+        "Select Multiple Media Files",
+        QDir::homePath(),
         "All Supported Media (*.jpg *.png *.mp4 *.mov);;Images (*.jpg *.png);;Videos (*.mp4 *.mov)"
-    );
+        );
 
     if (files.isEmpty()) return;
 
@@ -174,7 +178,7 @@ void MainWindow::on_bulkAddButton_clicked()
             if (c.unicode() <= 127) {
                 cleanBase += c;
             } else {
-                needsRename = true; 
+                needsRename = true;
             }
         }
 
@@ -182,9 +186,9 @@ void MainWindow::on_bulkAddButton_clicked()
         if (needsRename) {
             if (cleanBase.trimmed().isEmpty()) cleanBase = "auto_renamed_media";
             QString newPath = dirPath + "/" + cleanBase + "." + suffix;
-            
+
             if (QFile::rename(file, newPath)) {
-                finalPath = newPath; 
+                finalPath = newPath;
             } else {
                 folderErrors.append(info.fileName() + " (Failed to auto-rename, might be open in another app)");
                 continue;
@@ -195,9 +199,9 @@ void MainWindow::on_bulkAddButton_clicked()
 
     if (!folderErrors.isEmpty()) {
         QMessageBox::warning(this, "Some files skipped",
-            "The following files could not be auto-fixed because their FOLDER contains special characters, or they are locked by another app:\n\n" +
-            folderErrors.join("\n") +
-            "\n\nMove them to a standard folder (like C:/videos) and try again.");
+                             "The following files could not be auto-fixed because their FOLDER contains special characters, or they are locked by another app:\n\n" +
+                                 folderErrors.join("\n") +
+                                 "\n\nMove them to a standard folder (like C:/videos) and try again.");
     }
 
     if (finalSafeFiles.isEmpty()) return;
@@ -219,18 +223,21 @@ void MainWindow::on_bulkAddButton_clicked()
 
     // --- GPU CRASH FIX: Staggered Loading Loop ---
     int staggerDelay = 0;
-    
+
     for (const QString& file : std::as_const(finalSafeFiles)) {
         PostWidget* newPost = new PostWidget(this);
-        
+
+        // Explicitly set the widget to use the provided Start Time
+        newPost->setScheduleTime(ui->startDateTimeEdit->dateTime());
+
         newPost->setFilePath(file, staggerDelay);
         ui->postsLayout->addWidget(newPost);
         connect(newPost, &PostWidget::removeClicked, this, &MainWindow::on_removePostWidget);
-        
-        staggerDelay += 300; 
+
+        staggerDelay += 300;
     }
     // ---------------------------------------------
-    
+
     updateAllPostTimes();
 }
 
@@ -295,7 +302,7 @@ void MainWindow::runBulkSchedule(const QList<PostJob>& jobs)
 
         if (count < jobs.count()) {
             emit updateStatus(QString("Cooldown: Waiting 3 seconds..."));
-            QThread::sleep(3); 
+            QThread::sleep(3);
         }
 
         count++;
@@ -399,7 +406,7 @@ void MainWindow::saveSettings()
 
     QString currentToken = ui->accessTokenLineEdit->text().trimmed();
     QString currentId = ui->pageIdLineEdit->text().trimmed();
-    
+
     if (!currentId.isEmpty() && !currentToken.isEmpty()) {
         bool exists = false;
         for (int i = 0; i < ui->pageComboBox->count(); ++i) {
@@ -411,7 +418,7 @@ void MainWindow::saveSettings()
                 break;
             }
         }
-        
+
         if (!exists) {
             QStringList dataList;
             dataList << currentId << currentToken;
@@ -433,7 +440,7 @@ void MainWindow::saveSettings()
     settings.endArray();
 
     settings.setValue("LastActivePageID", currentId);
-    
+
     statusBar()->showMessage("Account list saved successfully.");
 }
 
